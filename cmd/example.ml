@@ -8,11 +8,16 @@ let main () =
 
   Lwt.(
     Notify.get_all_templates
-      ~template_type:Notify.SMS
+      ~template_type:Notify.Email
       session
     >|= Printf.printf "wow. %s" >>= fun () ->
     Notify.get_template
       ~template_id:"a35b051c-98f3-403f-9e7b-d226bd22210f"
+      session
+    >|= Printf.printf "wow. %s" >>= fun () ->
+    Notify.send_email_notification
+      ~template_id:"1199828c-7a05-4c4a-b681-2781a6eaec28"
+      ~email_address:"someone@example.com"
       session
     >|= Printf.printf "wow. %s"
   )

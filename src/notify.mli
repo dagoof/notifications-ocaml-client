@@ -34,24 +34,24 @@ type status =
   | Failed
   | TechnicalFailure
 
-(*
-val send_sms_notification :
-  ?personilization:string dict ->
-  ?reference:id ->
-  ?sms_sender_id:id ->
-  Session.t ->
-  phone_number:string ->
-  template_id:id ->
-  sms_notification_response
-
 val send_email_notification :
-  ?personilization:string dict ->
+  ?personalisation:string dict ->
   ?reference:id ->
   ?email_reply_to_id:string ->
   Session.t ->
   email_address:string ->
   template_id:id ->
   email_notification_response
+
+(*
+val send_sms_notification :
+  ?personalisation:string dict ->
+  ?reference:id ->
+  ?sms_sender_id:id ->
+  Session.t ->
+  phone_number:string ->
+  template_id:id ->
+  sms_notification_response
 
 val get_notification_by_id :
   Session.t ->

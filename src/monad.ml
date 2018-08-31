@@ -25,7 +25,7 @@ module Option = struct
       let return x = Some x
     end)
 
-  let with_default ~default t =
+  let with_default t ~default =
     match t with 
     | Some x -> x
     | None -> default

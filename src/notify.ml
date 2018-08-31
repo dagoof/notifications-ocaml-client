@@ -4,6 +4,17 @@ module Option = Monad.Option
 
 module Dict = Map.Make(String)
 
+(*
+let pairs dict =
+  Dict.to_seq dict |> List.of_seq
+
+let filter_map f lst =
+  List.map f lst
+  |> List.filter (fun item ->
+      Option.( with_default ~default:false @@ item >>| fun _ -> true)
+    )
+*)
+
 let with_path uri ~path = Uri.with_path uri path
 
 let get_body t = Lwt.(
@@ -44,7 +55,6 @@ module Session = struct
       ; "User-agent", "NOTIFY-API-OCAML-CLIENT/0.1"
       ]
 
-  (*
   let post ?json ?params t ~path =
     let headers = headers t in
     let uri =
@@ -56,7 +66,6 @@ module Session = struct
     and body = Option.(json >>| Yojson.to_string >>| Cohttp_lwt.Body.of_string)
     in
     Client.post ?body ~headers uri
-     *)
 
   let get ?params t ~path =
     let headers = headers t in
@@ -98,24 +107,32 @@ type status =
   | Failed
   | TechnicalFailure
 
-(*
+let send_email_notification
+    ?personalisation
+    ?reference
+    ?email_reply_to_id
+    session
+    ~email_address
+    ~template_id =
+  get_body @@
+  Session.post
+    ~path:"/v2/notifications/email"
+    ~json:(
+        `Assoc
+          [ "email_address", `String email_address
+          ; "template_id", `String template_id
+          ]
+      )
+    session
+
 let send_sms_notification
-    ?personilization
+    ?personalisation
     ?reference
     ?sms_sender_id
     session
     ~phone_number
     ~template_id =
   Lwt.return "WOW TJIS IS GREAT"
-
-let send_email_notification
-    ?personilization
-    ?reference
-    ?email_reply_to_id
-    session
-    ~email_address
-    ~template_id =
-  Lwt.return "damn yo"
 
 let get_all_notifications
     ?template_type
@@ -140,7 +157,28 @@ let get_received_texts_number
     ?older_than
     session =
   Lwt.return "RECIEVED TEXETS"
-  *)
+
+(*
+        notification = {
+            "email_address": email_address,
+            "template_id": template_id
+        }
+        if personalisation:
+            personalisation = personalisation.copy()
+            for key in personalisation:
+                if isinstance(personalisation[key], io.IOBase):
+                    personalisation[key] = {
+                        'file': base64.b64encode(personalisation[key].read()).decode('ascii')
+                    }
+            notification.update({'personalisation': personalisation})
+        if reference:
+            notification.update({'reference': reference})
+        if email_reply_to_id:
+            notification.update({'email_reply_to_id': email_reply_to_id})
+        return self.post(
+            '/v2/notifications/email',
+            data=notification)
+   *)
 
 
 let get_all_templates
