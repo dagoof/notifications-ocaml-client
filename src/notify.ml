@@ -132,7 +132,16 @@ let send_sms_notification
     session
     ~phone_number
     ~template_id =
-  Lwt.return "WOW TJIS IS GREAT"
+  get_body @@
+  Session.post
+    ~path:"/v2/notifications/sms"
+    ~json:(
+        `Assoc
+          [ "phone_number", `String phone_number
+          ; "template_id", `String template_id
+          ]
+      )
+    session
 
 let get_all_notifications
     ?template_type

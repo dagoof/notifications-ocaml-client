@@ -43,7 +43,6 @@ val send_email_notification :
   template_id:id ->
   email_notification_response
 
-(*
 val send_sms_notification :
   ?personalisation:string dict ->
   ?reference:id ->
@@ -76,7 +75,6 @@ val get_received_texts_number :
   ?older_than:id ->
   Session.t ->
   response
-  *)
 
 val get_template :
   Session.t ->
