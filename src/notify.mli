@@ -66,11 +66,6 @@ val get_all_notifications :
   Session.t ->
   response
 
-val get_template :
-  Session.t ->
-  template_id:id ->
-  response
-
 val get_template_version :
   Session.t ->
   template_id:id ->
@@ -83,8 +78,13 @@ val get_received_texts_number :
   response
   *)
 
+val get_template :
+  Session.t ->
+  template_id:id ->
+  response
+
 val get_all_templates :
-  ?template_type:template_type list ->
+  ?template_type:template_type ->
   Session.t ->
   response
 

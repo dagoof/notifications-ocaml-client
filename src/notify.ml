@@ -130,11 +130,6 @@ let get_notification_by_id
     ~notification_id =
   Lwt.return "HELLO NOTIFICATION"
 
-let get_template 
-    session
-    ~template_id =
-  Lwt.return "HELLO TEMPLATES"
-
 let get_template_version
     session
     ~template_id
@@ -155,7 +150,15 @@ let get_all_templates
   Session.get
     ~path:"/v2/templates"
     ?params:Option.(
-        template_type >>| List.map template_type_to_string >>| fun t ->
-        ["type", t]
+        template_type >>| template_type_to_string >>| fun t ->
+        ["type", [t]]
       )
+    session
+
+let get_template 
+    session
+    ~template_id =
+  get_body @@
+  Session.get
+    ~path:Uri.("/v2/template/" ^ pct_encode template_id)
     session

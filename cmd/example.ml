@@ -7,7 +7,14 @@ let main () =
   in
 
   Lwt.(
-    Notify.get_all_templates session >|= Printf.printf "wow. %s"
+    Notify.get_all_templates
+      ~template_type:Notify.SMS
+      session
+    >|= Printf.printf "wow. %s" >>= fun () ->
+    Notify.get_template
+      ~template_id:"a35b051c-98f3-403f-9e7b-d226bd22210f"
+      session
+    >|= Printf.printf "wow. %s"
   )
 
 let () =
