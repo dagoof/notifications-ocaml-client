@@ -1,0 +1,3 @@
+(library
+ (name        notify)
+ (libraries yojson result lwt.unix cohttp-lwt-unix jwt))
