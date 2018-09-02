@@ -22,6 +22,30 @@ let get_body t = Lwt.(
     Cohttp_lwt.Body.to_string body
   )
 
+module Json = struct
+  type t = Yojson.json Dict.t
+
+  let empty = Dict.empty
+
+  let add key ?value t =
+    Option.(
+      with_default ~default:t 
+        (value >>| fun v -> Dict.add key v t)
+    )
+
+  let without ~key t =
+    Dict.remove key t
+
+  let to_json t =
+    `Assoc (Dict.to_seq t |> List.of_seq)
+
+  let to_string t =
+    Yojson.to_string @@ to_json t
+
+  let to_cohttp_body t =
+    Cohttp_lwt.Body.of_string @@ to_string t
+end
+
 module Session = struct
   type t =
     { base_url : string
@@ -63,7 +87,7 @@ module Session = struct
       |> fun default -> Option.(
           with_default ~default (params >>| Uri.with_query default)
         )
-    and body = Option.(json >>| Yojson.to_string >>| Cohttp_lwt.Body.of_string)
+    and body = Option.map Json.to_cohttp_body json
     in
     Client.post ?body ~headers uri
 
@@ -117,11 +141,11 @@ let send_email_notification
   get_body @@
   Session.post
     ~path:"/v2/notifications/email"
-    ~json:(
-        `Assoc
-          [ "email_address", `String email_address
-          ; "template_id", `String template_id
-          ]
+    ~json:Json.(
+        empty
+        |> add "email_address" ~value:(`String email_address)
+        |> add "template_id" ~value:(`String template_id)
+        |> add "reference" ?value:Option.(reference >>| fun ref -> `String ref)
       )
     session
 
@@ -135,11 +159,11 @@ let send_sms_notification
   get_body @@
   Session.post
     ~path:"/v2/notifications/sms"
-    ~json:(
-        `Assoc
-          [ "phone_number", `String phone_number
-          ; "template_id", `String template_id
-          ]
+    ~json:Json.(
+        empty
+        |> add "phone_number" ~value:(`String phone_number)
+        |> add "template_id" ~value:(`String template_id)
+        |> add "reference" ?value:Option.(reference >>| fun ref -> `String ref)
       )
     session
 

@@ -18,11 +18,13 @@ let main () =
     Notify.send_email_notification
       ~template_id:"1199828c-7a05-4c4a-b681-2781a6eaec28"
       ~email_address:"someone@example.com"
+      ~reference:"INTERNET-COM-BROADBAND"
       session
     >|= Printf.printf "wow. %s" >>= fun () ->
     Notify.send_sms_notification
       ~template_id:"a35b051c-98f3-403f-9e7b-d226bd22210f"
       ~phone_number:"your-number-here"
+      ~reference:"DOT-NET-FIFTEEN"
       session
     >|= Printf.printf "wow. %s"
   )
