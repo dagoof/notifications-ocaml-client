@@ -25,6 +25,10 @@ module Option = struct
       let return x = Some x
     end)
 
+  let in_absence ?sometimes = function
+    | Some x -> Some x
+    | None -> sometimes
+
   let with_default t ~default =
     match t with 
     | Some x -> x

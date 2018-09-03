@@ -10,7 +10,11 @@ module Session : sig
   val create_jwt : t -> string
 end
 
-module Dict : Map.S with type key = string
+module Dict : sig
+  include Map.S with type key = string
+
+  val of_list : (key * 'a) list -> 'a t
+end
 
 type 'a dict = 'a Dict.t
 
@@ -28,10 +32,10 @@ type template_type =
   | Letter
 
 type status =
-  | Delivered
   | Sending
-  | Sent
-  | Failed
+  | Delivered
+  | PermanentFailure
+  | TemporaryFailure
   | TechnicalFailure
 
 val send_email_notification :
@@ -58,8 +62,8 @@ val get_notification_by_id :
   response
 
 val get_all_notifications :
-  ?template_type:template_type list ->
-  ?status:status list ->
+  ?template_type:template_type ->
+  ?status:status ->
   ?reference:id ->
   ?older_than:id ->
   Session.t ->

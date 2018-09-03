@@ -1,19 +1,14 @@
+let (>>>) f g x = g @@ f x
+
 module Client = Cohttp_lwt_unix.Client
 
 module Option = Monad.Option
 
-module Dict = Map.Make(String)
+module Dict = struct
+  include Map.Make(String)
 
-(*
-let pairs dict =
-  Dict.to_seq dict |> List.of_seq
-
-let filter_map f lst =
-  List.map f lst
-  |> List.filter (fun item ->
-      Option.( with_default ~default:false @@ item >>| fun _ -> true)
-    )
-*)
+  let of_list l = List.to_seq l |> of_seq
+end
 
 let with_path uri ~path = Uri.with_path uri path
 
@@ -21,6 +16,54 @@ let get_body t = Lwt.(
     t >>= fun (_, body) ->
     Cohttp_lwt.Body.to_string body
   )
+
+module Params = struct
+  module StringSet = Set.Make(String)
+
+  type t = StringSet.t Dict.t
+
+  let empty = Dict.empty
+
+  let create_set ?value () =
+    Option.(
+      with_default
+        ~default:StringSet.empty
+        (value >>| StringSet.singleton)
+    )
+
+  let add key ?value t =
+    let combine merge a b =
+      Option.(
+        in_absence ?sometimes:b @@
+        in_absence ?sometimes:a @@
+        map2 merge a b
+      )
+    in
+
+    Dict.update key (fun existing ->
+        combine
+          StringSet.union
+          Option.(value >>| StringSet.singleton)
+          existing
+      )
+      t
+
+  let without ~key t =
+    Dict.remove key t
+
+  let to_query_params t =
+    t
+    |> Dict.map (StringSet.to_seq >>> List.of_seq)
+    |> Dict.to_seq
+    |> List.of_seq
+
+  let set_query ?params uri =
+    Option.(
+      with_default
+        ~default:uri
+        (params >>| to_query_params >>| Uri.with_query uri)
+    )
+end
 
 module Json = struct
   type t = Yojson.json Dict.t
@@ -44,6 +87,10 @@ module Json = struct
 
   let to_cohttp_body t =
     Cohttp_lwt.Body.of_string @@ to_string t
+
+  let string s = `String s
+
+  let assoc o = `Assoc o
 end
 
 module Session = struct
@@ -84,9 +131,7 @@ module Session = struct
     let uri =
       Uri.of_string t.base_url
       |> with_path ~path
-      |> fun default -> Option.(
-          with_default ~default (params >>| Uri.with_query default)
-        )
+      |> Params.set_query ?params
     and body = Option.map Json.to_cohttp_body json
     in
     Client.post ?body ~headers uri
@@ -96,10 +141,9 @@ module Session = struct
     let uri = 
       Uri.of_string t.base_url
       |> with_path ~path
-      |> fun default -> Option.(
-          with_default ~default (params >>| Uri.with_query default)
-        )
+      |> Params.set_query ?params
     in
+    Printf.printf "%s\n" (Uri.to_string uri);
     Client.get ~headers uri
 end
 
@@ -114,22 +158,37 @@ type email_notification_response = string Lwt.t
 
 type response = string Lwt.t
 
+let personalise = Json.(Dict.map string >>> to_json)
+
 type template_type =
   | SMS
   | Email
   | Letter
 
-let template_type_to_string = function
+let tt_to_s = function
   | SMS -> "sms"
   | Email -> "email"
   | Letter -> "letter"
 
 type status =
-  | Delivered
   | Sending
-  | Sent
-  | Failed
+  | Delivered
+  | PermanentFailure
+  | TemporaryFailure
   | TechnicalFailure
+
+let status_to_s = function
+  | Sending -> "sending"
+  | Delivered -> "delivered"
+  | PermanentFailure -> "permanent-failure"
+  | TemporaryFailure -> "temporary-failure"
+  | TechnicalFailure -> "technical-failure"
+
+let slash_join f s = String.concat " / " @@ List.map f s
+
+let statuses_to_s = slash_join status_to_s
+
+let tts_to_s = slash_join tt_to_s
 
 let send_email_notification
     ?personalisation
@@ -143,9 +202,11 @@ let send_email_notification
     ~path:"/v2/notifications/email"
     ~json:Json.(
         empty
-        |> add "email_address" ~value:(`String email_address)
-        |> add "template_id" ~value:(`String template_id)
-        |> add "reference" ?value:Option.(reference >>| fun ref -> `String ref)
+        |> add "email_address" ~value:(string email_address)
+        |> add "template_id" ~value:(string template_id)
+        |> add "reference" ?value:Option.(reference >>| string)
+        |> add "email_reply_to_id" ?value:Option.(email_reply_to_id >>| string)
+        |> add "personalisation" ?value:Option.(personalisation >>| personalise)
       )
     session
 
@@ -163,7 +224,9 @@ let send_sms_notification
         empty
         |> add "phone_number" ~value:(`String phone_number)
         |> add "template_id" ~value:(`String template_id)
-        |> add "reference" ?value:Option.(reference >>| fun ref -> `String ref)
+        |> add "reference" ?value:Option.(reference >>| string)
+        |> add "sms_sender_id" ?value:Option.(sms_sender_id >>| string)
+        |> add "personalisation" ?value:Option.(personalisation >>| personalise)
       )
     session
 
@@ -173,46 +236,50 @@ let get_all_notifications
     ?reference
     ?older_than
     session =
-  Lwt.return "HELLO NOTIFICATION"
+  get_body @@
+  Session.get
+    ~path:"/v2/notifications"
+    ~params:Params.(
+        empty
+        |> add "status" ?value:Option.(status >>| status_to_s)
+        |> add "template_type" ?value:Option.(template_type >>| tt_to_s)
+        |> add "reference" ?value:reference
+        |> add "older_than" ?value:older_than
+      )
+    session
 
 let get_notification_by_id
     session
     ~notification_id =
-  Lwt.return "HELLO NOTIFICATION"
+  get_body @@
+  Session.get
+    ~path:Uri.("/v2/notifications/" ^ pct_encode notification_id)
+    session
 
 let get_template_version
     session
     ~template_id
     ~version =
-  Lwt.return "HELLO TEMPLATE VERSION"
+  get_body @@
+  Session.get
+    ~path:Uri.(
+        Printf.sprintf "/v2/template/%s/version/%s"
+          (pct_encode template_id)
+          (pct_encode @@ string_of_int version)
+      )
+    session
 
 let get_received_texts_number
     ?older_than
     session =
-  Lwt.return "RECIEVED TEXETS"
-
-(*
-        notification = {
-            "email_address": email_address,
-            "template_id": template_id
-        }
-        if personalisation:
-            personalisation = personalisation.copy()
-            for key in personalisation:
-                if isinstance(personalisation[key], io.IOBase):
-                    personalisation[key] = {
-                        'file': base64.b64encode(personalisation[key].read()).decode('ascii')
-                    }
-            notification.update({'personalisation': personalisation})
-        if reference:
-            notification.update({'reference': reference})
-        if email_reply_to_id:
-            notification.update({'email_reply_to_id': email_reply_to_id})
-        return self.post(
-            '/v2/notifications/email',
-            data=notification)
-   *)
-
+  get_body @@
+  Session.get
+    ~path:"/v2/received-text-messages"
+    ~params:Params.(
+        empty
+        |> add "older_than" ?value:older_than
+      )
+    session
 
 let get_all_templates
     ?template_type
@@ -220,9 +287,9 @@ let get_all_templates
   get_body @@
   Session.get
     ~path:"/v2/templates"
-    ?params:Option.(
-        template_type >>| template_type_to_string >>| fun t ->
-        ["type", [t]]
+    ~params:Params.(
+        empty
+        |> add "type" ?value:Option.(template_type >>| tt_to_s)
       )
     session
 
