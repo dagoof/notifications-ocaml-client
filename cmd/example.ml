@@ -10,6 +10,7 @@ let main () =
     Notify.get_all_templates
       ~template_type:Notify.Email
       session
+    (*
     >|= Printf.printf "wow. %s" >>= fun () ->
     Notify.get_template
       ~template_id:"1199828c-7a05-4c4a-b681-2781a6eaec28"
@@ -28,14 +29,13 @@ let main () =
     Notify.get_all_notifications
       ~template_type:Notify.SMS
       session
-    (*
+     *)
     >|= Printf.printf "wow. %s" >>= fun () ->
     Notify.send_sms_notification
       ~template_id:"a35b051c-98f3-403f-9e7b-d226bd22210f"
       ~phone_number:"your-number-here"
       ~reference:"DOT-NET-FIFTEEN"
       session
-     *)
     >|= Printf.printf "wow. %s"
   )
 
