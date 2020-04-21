@@ -41,6 +41,8 @@ type status =
 val send_email_notification :
   ?personalisation:string dict ->
   ?reference:id ->
+  ?status_callback_url:string ->
+  ?status_callback_bearer_token:string ->
   ?email_reply_to_id:string ->
   Session.t ->
   email_address:string ->
@@ -50,6 +52,8 @@ val send_email_notification :
 val send_sms_notification :
   ?personalisation:string dict ->
   ?reference:id ->
+  ?status_callback_url:string ->
+  ?status_callback_bearer_token:string ->
   ?sms_sender_id:id ->
   Session.t ->
   phone_number:string ->

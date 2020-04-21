@@ -66,15 +66,22 @@ module Params = struct
 end
 
 module Json = struct
-  type t = Yojson.json Dict.t
+  type t = Yojson.t Dict.t
 
   let empty = Dict.empty
+
+  let string s = `String s
+
+  let assoc o = `Assoc o
 
   let add key ?value t =
     Option.(
       with_default ~default:t 
         (value >>| fun v -> Dict.add key v t)
     )
+
+  let add_s key ?value t =
+    add key ?value:Option.(value >>| string) t
 
   let without ~key t =
     Dict.remove key t
@@ -87,10 +94,6 @@ module Json = struct
 
   let to_cohttp_body t =
     Cohttp_lwt.Body.of_string @@ to_string t
-
-  let string s = `String s
-
-  let assoc o = `Assoc o
 end
 
 module Session = struct
@@ -100,8 +103,9 @@ module Session = struct
     ; api_key : string
     }
 
+
   let create
-      ?(base_url="http://localhost:6011")
+      ?(base_url="https://rest-api.notify.gov.au")
       ~api_key
       ~service_id () =
     { base_url; service_id; api_key }
@@ -134,7 +138,7 @@ module Session = struct
       |> Params.set_query ?params
     and body = Option.map Json.to_cohttp_body json
     in
-    Client.post ?body ~headers uri
+    Client.post ?body ~chunked:false ~headers uri
 
   let get ?params t ~path =
     let headers = headers t in
@@ -193,6 +197,8 @@ let tts_to_s = slash_join tt_to_s
 let send_email_notification
     ?personalisation
     ?reference
+    ?status_callback_url
+    ?status_callback_bearer_token
     ?email_reply_to_id
     session
     ~email_address
@@ -202,10 +208,12 @@ let send_email_notification
     ~path:"/v2/notifications/email"
     ~json:Json.(
         empty
-        |> add "email_address" ~value:(string email_address)
-        |> add "template_id" ~value:(string template_id)
-        |> add "reference" ?value:Option.(reference >>| string)
-        |> add "email_reply_to_id" ?value:Option.(email_reply_to_id >>| string)
+        |> add_s "email_address" ~value:email_address
+        |> add_s "template_id" ~value:template_id
+        |> add_s "reference" ?value:reference
+        |> add_s "email_reply_to_id" ?value:email_reply_to_id
+        |> add_s "status_callback_url" ?value:status_callback_url
+        |> add_s "status_callback_bearer_token" ?value:status_callback_bearer_token
         |> add "personalisation" ?value:Option.(personalisation >>| personalise)
       )
     session
@@ -213,6 +221,8 @@ let send_email_notification
 let send_sms_notification
     ?personalisation
     ?reference
+    ?status_callback_url
+    ?status_callback_bearer_token
     ?sms_sender_id
     session
     ~phone_number
@@ -222,10 +232,12 @@ let send_sms_notification
     ~path:"/v2/notifications/sms"
     ~json:Json.(
         empty
-        |> add "phone_number" ~value:(`String phone_number)
-        |> add "template_id" ~value:(`String template_id)
-        |> add "reference" ?value:Option.(reference >>| string)
-        |> add "sms_sender_id" ?value:Option.(sms_sender_id >>| string)
+        |> add_s "phone_number" ~value:phone_number
+        |> add_s "template_id" ~value:template_id
+        |> add_s "reference" ?value:reference
+        |> add_s "sms_sender_id" ?value:sms_sender_id
+        |> add_s "status_callback_url" ?value:status_callback_url
+        |> add_s "status_callback_bearer_token" ?value:status_callback_bearer_token
         |> add "personalisation" ?value:Option.(personalisation >>| personalise)
       )
     session

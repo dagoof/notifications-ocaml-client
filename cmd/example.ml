@@ -1,44 +1,33 @@
+let service_id  = Sys.getenv "SERVICE_ID"
+let api_key     = Sys.getenv "API_KEY"
+let template_id = Sys.getenv "TEMPLATE_ID"
+let base_url    = Sys.getenv_opt "API_BASE_URL"
+let phone_number = Sys.getenv "PHONE_NUMBER"
+
 let main () =
   let session = 
     Notify.Session.create
-      ~service_id:"27ba9f2a-2803-4c8e-82c1-1357de4b6a94"
-      ~api_key:"447000ea-623b-48dc-928f-aef73346894a"
+      ?base_url
+      ~service_id
+      ~api_key
       ()
   in
 
   Lwt.(
     Notify.get_all_templates
-      ~template_type:Notify.Email
-      session
-    (*
-    >|= Printf.printf "wow. %s" >>= fun () ->
-    Notify.get_template
-      ~template_id:"1199828c-7a05-4c4a-b681-2781a6eaec28"
-      session
-    >|= Printf.printf "wow. %s" >>= fun () ->
-    Notify.send_email_notification
-      ~template_id:"1199828c-7a05-4c4a-b681-2781a6eaec28"
-      ~email_address:"someone@example.com"
-      ~reference:"INTERNET-COM-BROADBAND"
-      ~personalisation:Notify.Dict.(
-          of_list
-            [ "name", "FROGBOY 2018" ]
-        )
-      session
-    >|= Printf.printf "wow. %s" >>= fun () ->
-    Notify.get_all_notifications
       ~template_type:Notify.SMS
       session
-     *)
-    >|= Printf.printf "wow. %s" >>= fun () ->
+    >|= Printf.printf "%s" >>= fun () ->
     Notify.send_sms_notification
-      ~template_id:"a35b051c-98f3-403f-9e7b-d226bd22210f"
-      ~phone_number:"your-number-here"
-      ~reference:"DOT-NET-FIFTEEN"
+      ~template_id
+      ~phone_number
+      ~reference:"notify-ocaml-ref-123"
+      ~personalisation:Notify.Dict.(of_list [
+          "reason", "this is forever town";
+        ])
       session
-    >|= Printf.printf "wow. %s"
+    >|= Printf.printf "%s"
   )
 
 let () =
-  Lwt_main.run @@ main ()
-
+  Lwt_main.run @@ Lwt_list.iter_p main [()]
